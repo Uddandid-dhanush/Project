@@ -27,11 +27,11 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      -- name: Configure AWS credentials
-         uses: aws-actions/configure-aws-credentials@v4
-         with:
-            role-to-assume: arn:aws:iam::675006621191:role/GitHubActions-EKS-Deployment
-            aws-region: ap-south-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::675006621191:role/GitHubActions-EKS-Deployment
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Verify AWS identity
         run: |
@@ -79,6 +79,7 @@ jobs:
       - name: Get application URL
         run: |
           echo "Waiting for LoadBalancer..."
+
           for i in {1..30}; do
             URL=$(kubectl get service $K8S_SERVICE \
               -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
