@@ -1,7 +1,7 @@
-venv
-__pycache__
+venv/
+__pycache__/
 *.pyc
-.git
-.github
+.git/
+.github/
 .env
 users.db

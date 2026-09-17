@@ -8,7 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY database.py .
-COPY users.db .
 
 EXPOSE 5000
 
