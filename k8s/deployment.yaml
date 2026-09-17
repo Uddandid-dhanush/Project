@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-login-deployment
+  labels:
+    app: flask-login
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-login
+  template:
+    metadata:
+      labels:
+        app: flask-login
+    spec:
+      containers:
+        - name: flask-login-container
+          image: 675006621191.dkr.ecr.ap-south-1.amazonaws.com/dhanush-ecr-repository:v1
+          ports:
+            - containerPort: 5000
