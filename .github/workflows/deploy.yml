@@ -1,4 +1,4 @@
-name: Deploy Flask App to AWS ECR and EKS
+name: Test GitHub OIDC
 
 on:
   push:
@@ -9,88 +9,21 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ap-south-1
-  ECR_REPOSITORY: dhanush-ecr-repository
-  EKS_CLUSTER_NAME: dhanush-devops-eks-cluster
-  K8S_DEPLOYMENT: flask-login-deployment
-  K8S_SERVICE: flask-login-service
-  IMAGE_TAG: ${{ github.sha }}
-
 jobs:
-  deploy:
-    name: Build and Deploy
+  oidc-test:
+    name: Test OIDC
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::675006621191:role/GitHubActions-EKS-Deployment
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Verify AWS identity
+      - name: Show OIDC claims
+        env:
+          AUDIENCE: sts.amazonaws.com
         run: |
-          aws sts get-caller-identity
+          TOKEN_JSON=$(curl -s \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          ID_TOKEN=$(echo "$TOKEN_JSON" | jq -r .value)
 
-      - name: Build Docker image
-        run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-
-      - name: Tag Docker image
-        run: |
-          docker tag \
-            $ECR_REPOSITORY:$IMAGE_TAG \
-            ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Push Docker image to ECR
-        run: |
-          docker push \
-            ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig \
-            --region $AWS_REGION \
-            --name $EKS_CLUSTER_NAME
-
-      - name: Deploy application to EKS
-        run: |
-          kubectl set image deployment/$K8S_DEPLOYMENT \
-            flask-login-container=${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Wait for deployment
-        run: |
-          kubectl rollout status deployment/$K8S_DEPLOYMENT --timeout=180s
-
-      - name: Check pods
-        run: |
-          kubectl get pods
-          kubectl get deployment
-
-      - name: Get application URL
-        run: |
-          echo "Waiting for LoadBalancer..."
-
-          for i in {1..30}; do
-            URL=$(kubectl get service $K8S_SERVICE \
-              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-
-            if [ -n "$URL" ]; then
-              echo "Application URL: http://$URL"
-              exit 0
-            fi
-
-            sleep 10
-          done
-
-          echo "LoadBalancer URL is not available yet."
-          kubectl get service $K8S_SERVICE
+          echo "GitHub OIDC claims:"
+          echo "$ID_TOKEN" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq .
