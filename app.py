@@ -22,7 +22,7 @@ create_table()
 def home():
 
     return jsonify({
-        "message": "Flask User API is running successfully"
+        "message": "Flask User API is running successfully  is working"
     }), 200
 
 
